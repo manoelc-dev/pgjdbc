@@ -230,18 +230,22 @@ tasks.shadowJar {
     ).forEach {
         relocate(it, "${project.group}.shaded.$it")
     }
-    // ENG-1732 bazelbub source-build fork: publish the shaded jar (pgjdbc classes +
-    // relocated com.ongres SCRAM/stringprep) as the canonical postgresql-<v>.jar — the
-    // name bazelbub's findJAR fishes out. Upstream's released main jar is this shaded
-    // artifact; the scram classes are NOT declared in the POM (shaded-only), so a plain
-    // jar would fail SCRAM auth. The plain jar moves to the "plain" classifier, and
-    // `:jar` is finalized by shadowJar so building :postgresql:jar materialises the
-    // shaded postgresql-<v>.jar into build/libs.
-    archiveClassifier.set("")
+    // ENG-1732 bazelbub source-build fork: bazelbub's findJAR serves the canonical
+    // postgresql-<v>.jar. Upstream's released main jar is the SHADED artifact (pgjdbc
+    // classes + relocated com.ongres SCRAM/stringprep); the scram classes are NOT
+    // declared in the POM (shaded-only), so the plain jar would fail SCRAM auth. Copy
+    // the shaded -all.jar over postgresql-<v>.jar after it's built. We KEEP the default
+    // "-all" classifier so the osgiJar/generateKar task graph (which reads shadowJar's
+    // archiveFile) is unchanged — setting classifier="" collides their output paths.
+    doLast {
+        val libs = archiveFile.get().asFile.parentFile
+        val main = libs.resolve("${archiveBaseName.get()}-${archiveVersion.get()}.jar")
+        archiveFile.get().asFile.copyTo(main, overwrite = true)
+        logger.lifecycle("ENG-1732: copied shaded ${archiveFile.get().asFile.name} -> ${main.name}")
+    }
 }
 
 tasks.named<Jar>("jar") {
-    archiveClassifier.set("plain")
     finalizedBy(tasks.shadowJar)
 }
 
