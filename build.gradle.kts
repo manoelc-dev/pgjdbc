@@ -29,7 +29,11 @@ ide {
 
 val String.v: String get() = rootProject.extra["$this.version"] as String
 
-val buildVersion = "pgjdbc".v + releaseParams.snapshotSuffix
+// ENG-1732 bazelbub source-build fork: drop the -SNAPSHOT suffix so the head jar
+// is published as postgresql-42.7.7.jar (the name bazelbub's findJAR fishes out),
+// not postgresql-42.7.7-SNAPSHOT / -<timestamp>.jar. Equivalent to -Prelease but
+// without enabling the vlsi stage-vote-release machinery.
+val buildVersion = "pgjdbc".v
 
 println("Building pgjdbc $buildVersion")
 
